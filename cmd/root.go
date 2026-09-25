@@ -13,9 +13,12 @@ import (
 	"math/bits"
 	"math"
 	"github.com/spf13/cobra"
+	"github.com/guptarohit/asciigraph"
+	"golang.org/x/term"
 )
 
 var inputPaths []string
+var size int
 var files []string
 
 type entropy struct {
@@ -128,19 +131,47 @@ var rootCmd = &cobra.Command{
 		}
 
 		for i:= range(files) {
-			fmt.Printf("[i] -> Discovered %s\n", files[i])
-			h := h(files[i], 1024*10000)
-			for _, j := range h {
-			    fmt.Printf(
-			        "%8d - %8d | entropy: %.4f bits/byte\n",
-			        j.sliceStart,
-			        j.sliceEnd,
-			        j.entropy,
-			    )
+			info, err := os.Stat(files[i])
+			check(err)
+			if (info.Size() == 0) {
+				fmt.Printf("[w] -> Skipping %s with size 0\n", files[i])
+				continue
 			}
+			fmt.Printf("[i] -> Discovered %s\n", files[i])
+			h := h(files[i], size)
+			//for _, j := range h {
+			//    fmt.Printf(
+			//        "%8d - %8d | entropy: %.4f bits/byte\n",
+			//        j.sliceStart,
+			//        j.sliceEnd,
+			//        j.entropy,
+			//    )
+			//}
+
+			values := make([]float64, len(h))
+			for i, e := range(h) {
+				values[i] = e.entropy
+			}
+			
+			width, _, err := term.GetSize(int(os.Stdout.Fd()))
+			check(err)
+			const MiB = 1024 * 1024
+
+			
+			startMiB := float64(h[0].sliceEnd) / MiB
+			endMiB := float64(h[len(h)-1].sliceEnd) / MiB
+			
+			graph := asciigraph.Plot(
+				values,
+				asciigraph.Height(10),
+				asciigraph.Width(width-12),
+				asciigraph.XAxisRange(startMiB, endMiB),
+				asciigraph.XAxisTickCount(10),
+				asciigraph.Caption("MiB"),
+			)
+			
+			fmt.Println(graph)
 		}
-
-
 		
 		return nil
 		
@@ -168,6 +199,7 @@ func init() {
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rootCmd.Flags().StringSliceVarP(&inputPaths, "input", "i", nil, "file(s) to extract from. Can be list of files or dir.")
+	    rootCmd.Flags().IntVarP(&size, "size", "s", 1048576, "sector size in bytes")
 
 }
 
