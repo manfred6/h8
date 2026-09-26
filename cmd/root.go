@@ -27,6 +27,7 @@ var (
 	graphUnit  int
 	graphXDesc string
 	sectorSize int64
+	outUnit    string
 )
 
 const (
@@ -69,7 +70,8 @@ func getFiles(root string) []string {
 
 func bitEntropy(buf []byte) float64 {
 	var pX1, sP1, pX0, sP0 float64
-	var totalOneBits, bufSize int
+	var totalOneBits int
+	var bufSize int = len(buf) * 8
 
 	for _, i := range buf {
 		totalOneBits += bits.OnesCount8(i)
@@ -209,8 +211,10 @@ and low-level data inspection.
 
 		if useByte {
 			etype = "byte"
+			outUnit  = "bits/byte"
 		} else {
 			etype = "bit"
+			outUnit  = "bits/bit"
 		}
 
 		for i := range inputPaths {
@@ -249,8 +253,9 @@ and low-level data inspection.
 			fmt.Printf("[i] -> Total size of %s: %d %s\n", files[i], fsize / translateBytes(fsize).size, translateBytes(chunkSize).label)
 			for _, j := range h {
 			    fmt.Printf(
-					"   \\__ H(X): %.4f bits/byte |> Sector: %d - %d\n",
+					"   \\__ H(X): %.4f %s |> Sector: %d - %d\n",
 			        j.entropy,
+					outUnit,
 			        j.sliceStart / sectorSize,
 			        j.sliceEnd / sectorSize - 1,
 			    )
